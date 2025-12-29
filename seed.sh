@@ -3,54 +3,67 @@ set -e
 
 echo "==> Starting MongoDB seed..."
 
-# Encode password cho URI (handle ký tự đặc biệt)
+# Encode password
 urlencode() {
     local raw="$1"
-    local length="${#raw}"
-    local i
-    local c
-    for (( i = 0; i < length; i++ )); do
+    local encoded=""
+    local i c o
+    for ((i=0; i<${#raw}; i++)); do
         c="${raw:i:1}"
         case "$c" in
-            [a-zA-Z0-9.~_-]) printf "%s" "$c" ;;
-            *) printf "%%%02X" "'$c" ;;
+            [a-zA-Z0-9.~_-]) o="$c" ;;
+            *) printf -v o '%%%02X' "'$c"
         esac
+        encoded+="$o"
     done
+    echo "$encoded"
 }
 
 ENCODED_PASSWORD=$(urlencode "$MONGO_PASSWORD")
+echo "==> Encoded password: $ENCODED_PASSWORD"
 
-# Thư mục lưu log
 mkdir -p /seed/data
+echo "==> Log directory created at /seed/data"
 
-# MongoDB URI
 MONGO_URI="mongodb://${MONGO_USERNAME}:${ENCODED_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/${MONGO_DATABASE}?authSource=${MONGO_DATABASE}&directConnection=true"
+echo "==> MongoDB URI: $MONGO_URI"
 
-# Kiểm tra kết nối
-echo "==> Checking connection to MongoDB at $MONGO_HOST:$MONGO_PORT ..."
-if ! mongosh "$MONGO_URI" --eval "print('connected')" > /seed/data/mongo_check.log 2>&1; then
-    echo "==> ERROR: Cannot connect to MongoDB."
-    echo "==> See /seed/data/mongo_check.log"
-    exit 1
-fi
-echo "==> MongoDB is reachable."
+# Retry connection up to 5 times
+MAX_RETRIES=5
+for i in $(seq 1 $MAX_RETRIES); do
+    echo "==> Checking connection to MongoDB (attempt $i)..."
+    if mongosh "$MONGO_URI" --eval "print('connected')" > /seed/data/mongo_check.log 2>&1; then
+        echo "==> MongoDB is reachable!"
+        break
+    else
+        echo "==> Cannot connect yet, retrying in 5s..."
+        sleep 5
+    fi
+    if [ $i -eq $MAX_RETRIES ]; then
+        echo "==> ERROR: Failed to connect to MongoDB after $MAX_RETRIES attempts."
+        cat /seed/data/mongo_check.log
+        exit 1
+    fi
+done
 
 # Import users.json
 echo "==> Importing users.json..."
-if ! mongoimport "$MONGO_URI" --collection users --type json --file /seed/users.json --jsonArray > /seed/data/users_import.log 2>&1; then
-    echo "==> ERROR: Failed to import users.json."
-    echo "==> See /seed/data/users_import.log"
+if mongoimport "$MONGO_URI" --collection users --type json --file /seed/users.json --jsonArray > /seed/data/users_import.log 2>&1; then
+    echo "==> users.json imported successfully."
+else
+    echo "==> ERROR importing users.json"
+    cat /seed/data/users_import.log
     exit 1
 fi
-echo "==> users.json imported successfully."
 
 # Import products.json
 echo "==> Importing products.json..."
-if ! mongoimport "$MONGO_URI" --collection products --type json --file /seed/products.json --jsonArray > /seed/data/products_import.log 2>&1; then
-    echo "==> ERROR: Failed to import products.json."
-    echo "==> See /seed/data/products_import.log"
+if mongoimport "$MONGO_URI" --collection products --type json --file /seed/products.json --jsonArray > /seed/data/products_import.log 2>&1; then
+    echo "==> products.json imported successfully."
+else
+    echo "==> ERROR importing products.json"
+    cat /seed/data/products_import.log
     exit 1
 fi
-echo "==> products.json imported successfully."
 
 echo "==> MongoDB seed finished!"
