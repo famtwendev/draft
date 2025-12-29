@@ -32,8 +32,8 @@ echo "==> MongoDB URI: $MONGO_URI"
 MAX_RETRIES=5
 for i in $(seq 1 $MAX_RETRIES); do
     echo "==> Checking connection to MongoDB (attempt $i)..."
-    if mongosh "$MONGO_URI" --authenticationDatabase "$MONGO_DATABASE" --eval "print('connected')" > /seed/data/mongo_check.log 2>&1; then
-        echo "==> MongoDB is reachable!"
+    if mongosh "$MONGO_URI" --eval "print('connected')" > /seed/data/mongo_check.log 2>&1; then
+        echo "==> MongoDB connect success!"
         break
     else
         echo "==> Cannot connect yet, retrying in 5s..."
