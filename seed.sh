@@ -25,7 +25,7 @@ echo "==> Encoded password: $ENCODED_PASSWORD"
 mkdir -p /seed/data
 echo "==> Log directory created at /seed/data"
 
-MONGO_URI="mongodb://${MONGO_USERNAME}:${ENCODED_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/${MONGO_DATABASE}?authSource=${MONGO_DATABASE}&directConnection=true"
+MONGO_URI="mongodb://${MONGO_USERNAME}:${ENCODED_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/?directConnection=true"
 echo "==> MongoDB URI: $MONGO_URI"
 
 # Retry connection up to 5 times
