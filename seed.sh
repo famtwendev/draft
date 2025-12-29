@@ -32,7 +32,7 @@ echo "==> MongoDB URI: $MONGO_URI"
 MAX_RETRIES=5
 for i in $(seq 1 $MAX_RETRIES); do
     echo "==> Checking connection to MongoDB (attempt $i)..."
-    if mongosh "$MONGO_URI" --eval "print('connected')" > /seed/data/mongo_check.log 2>&1; then
+    if mongosh "$MONGO_URI" --authenticationDatabase "$MONGO_DATABASE" --eval "print('connected')" > /seed/data/mongo_check.log 2>&1; then
         echo "==> MongoDB is reachable!"
         break
     else
@@ -48,7 +48,7 @@ done
 
 # Import users.json
 echo "==> Importing users.json..."
-if mongoimport "$MONGO_URI" --collection users --type json --file /seed/users.json --jsonArray > /seed/data/users_import.log 2>&1; then
+if mongoimport "$MONGO_URI" --authenticationDatabase "$MONGO_DATABASE" --db "$MONGO_DATABASE" --collection users --type json --file /seed/users.json --jsonArray > /seed/data/users_import.log 2>&1; then
     echo "==> users.json imported successfully."
 else
     echo "==> ERROR importing users.json"
@@ -58,7 +58,7 @@ fi
 
 # Import products.json
 echo "==> Importing products.json..."
-if mongoimport "$MONGO_URI" --collection products --type json --file /seed/products.json --jsonArray > /seed/data/products_import.log 2>&1; then
+if mongoimport "$MONGO_URI" --authenticationDatabase "$MONGO_DATABASE" --db "$MONGO_DATABASE" --collection products --type json --file /seed/products.json --jsonArray > /seed/data/products_import.log 2>&1; then
     echo "==> products.json imported successfully."
 else
     echo "==> ERROR importing products.json"
