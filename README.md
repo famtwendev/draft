@@ -5,7 +5,7 @@ from pymongo import MongoClient
 from datetime import datetime
 import sys
 
-MONGO_URI = "mongodb://user:password@host1,host2,host3/?replicaSet=rs0"
+MONGO_URI = "mongodb://admin:Admin%40123@192.168.20.163:9328/?directConnection=true"
 
 print("=== MongoDB Replica Set Load Test ===")
 
