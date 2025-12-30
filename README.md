@@ -3,21 +3,25 @@ README
 ```py
 from pymongo import MongoClient
 from datetime import datetime
+from threading import Thread
 import sys
 
+# ==== Cấu hình ====
 MONGO_URI = "mongodb://admin:Admin%40123@192.168.20.163:9328/?directConnection=true"
+DB_NAME = "testdb"
+COLLECTION_NAME = "load_test"
+TOTAL = 1000000          # Tổng số document
+BATCH_SIZE = 1000        # Số document insert mỗi batch
+THREADS = 5              # Số luồng concurrent insert
 
-print("=== MongoDB Replica Set Load Test ===")
+print("=== MongoDB Replica Set Stress Test ===")
 
+# ==== Kết nối MongoDB ====
 try:
-    # 1. Kết nối MongoDB
     client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
-
-    # 2. Test connection (ping)
     client.admin.command("ping")
     print("[OK] Connected to MongoDB")
 
-    # 3. Kiểm tra Primary
     ismaster = client.admin.command("isMaster")
     print(f"[INFO] Primary node: {ismaster.get('primary')}")
 
@@ -26,28 +30,46 @@ except Exception as e:
     print(e)
     sys.exit(1)
 
-# 4. Chọn DB và collection
-db = client.testdb
-col = db.load_test
+db = client[DB_NAME]
+col = db[COLLECTION_NAME]
 
-print("[INFO] Start inserting data...")
+# ==== Hàm insert theo batch cho 1 thread ====
+def insert_worker(start, end):
+    batch = []
+    for i in range(start, end):
+        batch.append({
+            "index": i,
+            "message": "replica set write stress test",
+            "createdAt": datetime.now()
+        })
 
-# 5. Insert dữ liệu để tạo write load
-TOTAL = 100000
+        if len(batch) >= BATCH_SIZE:
+            col.insert_many(batch)
+            batch = []
+            print(f"[Thread-{start}] Inserted {i-start+1} docs")
 
-for i in range(TOTAL):
-    col.insert_one({
-        "index": i,
-        "message": "replica set write test",
-        "createdAt": datetime.now()
-    })
+    if batch:
+        col.insert_many(batch)
+        print(f"[Thread-{start}] Inserted remaining {len(batch)} docs")
 
-    if i % 1000 == 0:
-        print(f"[INSERT] Inserted {i}/{TOTAL}")
+# ==== Tính khoảng cho mỗi thread ====
+step = TOTAL // THREADS
+threads = []
 
-print("[DONE] Insert finished")
+for t in range(THREADS):
+    start = t * step
+    # thread cuối chạy đến TOTAL
+    end = TOTAL if t == THREADS - 1 else (t + 1) * step
+    th = Thread(target=insert_worker, args=(start, end))
+    threads.append(th)
+    th.start()
+
+# ==== Chờ tất cả thread kết thúc ====
+for th in threads:
+    th.join()
 
 client.close()
-print("[INFO] Connection closed")
+print("[DONE] Stress test finished. Connection closed.")
+
 
 ```
