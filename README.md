@@ -8,13 +8,13 @@ import sys
 
 # ==== Cấu hình ====
 MONGO_URI = "mongodb://admin:Admin%40123@192.168.20.163:9328/?directConnection=true"
-DB_NAME = "testdb"
-COLLECTION_NAME = "load_test"
-TOTAL = 1000000          # Tổng số document
-BATCH_SIZE = 1000        # Số document insert mỗi batch
-THREADS = 5              # Số luồng concurrent insert
+DB_NAME = "test"
+COLLECTION_NAME = "users"
+TOTAL = 500000          # Tổng số document (tăng/giảm tùy nhu cầu)
+BATCH_SIZE = 1000       # Số document insert mỗi batch
+THREADS = 5             # Số luồng concurrent insert
 
-print("=== MongoDB Replica Set Stress Test ===")
+print("=== MongoDB Replica Set Stress Test (User Data) ===")
 
 # ==== Kết nối MongoDB ====
 try:
@@ -38,8 +38,9 @@ def insert_worker(start, end):
     batch = []
     for i in range(start, end):
         batch.append({
-            "index": i,
-            "message": "replica set write stress test",
+            "name": f"User new {i}",
+            "email": f"jane{i}@example.com",  # email unique
+            "password": "$2a$10$BvULAPzxIhmIRo.vOq1j0eXj5LxxoZBr71v5vncr8WIfMFgdMxcpq",
             "createdAt": datetime.now()
         })
 
@@ -58,7 +59,6 @@ threads = []
 
 for t in range(THREADS):
     start = t * step
-    # thread cuối chạy đến TOTAL
     end = TOTAL if t == THREADS - 1 else (t + 1) * step
     th = Thread(target=insert_worker, args=(start, end))
     threads.append(th)
